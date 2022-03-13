@@ -24,11 +24,11 @@ namespace Revit_API_3_4
             Document doc = uidoc.Document;
 
             int wallQty = 0;
-            string resultString = String.Empty;
-            //string folderPath = "c:/windows/temp/-/";
-            string folderPath = Environment.GetFolderPath(Environment.SpecialFolder.Desktop) + "\\";
-            string fileName = "Wall-params_(Revit-API_Lab4-2).txt";
-            string ffp = folderPath + fileName; // full file path
+            string wallInfo = String.Empty;
+            string desktopPath = Environment.GetFolderPath(Environment.SpecialFolder.Desktop);
+            string fileName = "WallInfo_(Revit-API_Lab4-1).TXT";
+            //string fileName = "WallInfo_(Revit-API_Lab4-1).CSV";
+            string fullFilePath = Path.Combine(desktopPath,fileName);
 
             try
             {
@@ -36,31 +36,29 @@ namespace Revit_API_3_4
                 //    .OfClass(typeof(Wall))
                 //    .GetElementCount();
 
-                FilteredElementCollector wallCollector = new FilteredElementCollector(doc);
-                wallCollector.OfCategory(BuiltInCategory.OST_Walls);
+                FilteredElementCollector walls = new FilteredElementCollector(doc);
+                walls.OfCategory(BuiltInCategory.OST_Walls);
 
-                foreach (Element elem in wallCollector)
+                foreach (Element elem in walls)
                 {
                     //if (!(elem is WallType))
                     if (elem is Wall) // exclude Family Symbols (WallType)
                     {
                         wallQty += 1;
 
-                        //Parameter volume = elem.LookupParameter("Volume");
                         //Parameter type = elem.LookupParameter("Type");
+                        //Parameter volume = elem.LookupParameter("Volume");
 
-                        Parameter volume = elem.get_Parameter(BuiltInParameter.HOST_VOLUME_COMPUTED);
                         Parameter type = elem.get_Parameter(BuiltInParameter.ELEM_TYPE_PARAM);
+                        Parameter volume = elem.get_Parameter(BuiltInParameter.HOST_VOLUME_COMPUTED);
 
                         //TaskDialog.Show($"Стена#{wallQty}", $"Имя типа: \"{type.AsValueString()}\"{Environment.NewLine}Объем: {volume.AsValueString()}");
 
-                        resultString += type.AsValueString() + "; " + volume.AsValueString() + Environment.NewLine;
+                        wallInfo += type.AsValueString() + "; " + volume.AsValueString() + Environment.NewLine;
                     }
                 }
 
-                StreamWriter SW = new StreamWriter(ffp);
-                SW.Write(resultString);
-                SW.Close();
+                File.WriteAllText(fullFilePath, wallInfo);
 
                 TaskDialog.Show("Выполнено", $"Данные о всех ({wallQty}шт.) стенах проекта {doc.Title}.RVT выгружены в файл {fileName}{Environment.NewLine}(см. Рабочий стол)."); //{Environment.NewLine}{wallQty2}");
             }
