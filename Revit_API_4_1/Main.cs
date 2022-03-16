@@ -10,6 +10,7 @@ using System.IO;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
+using System.Windows.Forms;
 
 namespace Revit_API_4_1
 {
@@ -23,28 +24,24 @@ namespace Revit_API_4_1
             UIDocument uidoc = uiapp.ActiveUIDocument;
             Document doc = uidoc.Document;
 
-            int wallQty = 0;
+            string sepChar = ";"; //символ-разделитель
             string wallInfo = String.Empty;
-            string desktopPath = Environment.GetFolderPath(Environment.SpecialFolder.Desktop);
-            string fileName = "WallInfo_(Revit-API_Lab4-1).TXT";
-            //string fileName = "WallInfo_(Revit-API_Lab4-1).CSV";
-            string fullFilePath = Path.Combine(desktopPath,fileName);
+            wallInfo = "Имя типа" + sepChar + "Объем" + (Environment.NewLine);
 
             try
             {
-                //int wallQty2 = new FilteredElementCollector(doc)
-                //    .OfClass(typeof(Wall))
-                //    .GetElementCount();
-
-                FilteredElementCollector walls = new FilteredElementCollector(doc);
-                walls.OfCategory(BuiltInCategory.OST_Walls);
+                //FilteredElementCollector walls = new FilteredElementCollector(doc).OfCategory(BuiltInCategory.OST_Walls);                              
+                var walls = new FilteredElementCollector(doc) // var ?? List<Wall>
+                    .OfCategory(BuiltInCategory.OST_Walls)
+                    .WhereElementIsNotElementType()
+                    .Cast<Wall>()
+                    .ToList();
 
                 foreach (Element elem in walls)
                 {
                     //if (!(elem is WallType))
-                    if (elem is Wall) // exclude Family Symbols (WallType)
-                    {
-                        wallQty += 1;
+                    //if (elem is Wall) // exclude Family Symbols (WallType)
+                    //{
 
                         //Parameter type = elem.LookupParameter("Type");
                         //Parameter volume = elem.LookupParameter("Volume");
@@ -52,17 +49,46 @@ namespace Revit_API_4_1
                         Parameter type = elem.get_Parameter(BuiltInParameter.ELEM_TYPE_PARAM);
                         Parameter volume = elem.get_Parameter(BuiltInParameter.HOST_VOLUME_COMPUTED);
 
-                        //TaskDialog.Show($"Стена#{wallQty}", $"Имя типа: \"{type.AsValueString()}\"{Environment.NewLine}Объем: {volume.AsValueString()}");
+                        //TaskDialog.Show($"Стена#{walls.Count}", $"Имя типа: \"{type.AsValueString()}\"{Environment.NewLine}Объем: {volume.AsValueString()}");
 
-                        wallInfo += type.AsValueString() + "; " + volume.AsValueString() + Environment.NewLine;
-                    }
+                        wallInfo += type.AsValueString() + sepChar + volume.AsValueString() + Environment.NewLine;
+                    //}
                 }
 
-                File.WriteAllText(fullFilePath, wallInfo);
+                string desktopPath = Environment.GetFolderPath(Environment.SpecialFolder.Desktop);
+                //string fileName = "WallInfo_(Revit-API_Lab4-1).TXT";
+                string fileName = "WallInfo_(Revit-API_Lab4-1).CSV";
+                //string exportFilePath = Path.Combine(desktopPath, fileName);
 
-                TaskDialog.Show("Выполнено", $"Данные о всех ({wallQty}шт.) стенах проекта {doc.Title}.RVT выгружены в файл {fileName}{Environment.NewLine}(см. Рабочий стол)."); //{Environment.NewLine}{wallQty2}");
+                var saveDialog = new SaveFileDialog
+                {
+                    OverwritePrompt = true,
+                    InitialDirectory = desktopPath,
+                    Filter = "All files (*.*)|*.*",
+                    FileName = fileName,
+                    DefaultExt = ".csv"
+                };
+
+                string exportFilePath = string.Empty;
+                if (saveDialog.ShowDialog() == DialogResult.OK)
+                {
+                    exportFilePath = saveDialog.FileName;
+                }
+
+                if (string.IsNullOrEmpty(exportFilePath))
+                    return Result.Cancelled;
+
+                //File.WriteAllText(exportFilePath, wallInfo);
+                File.WriteAllText(exportFilePath, wallInfo, Encoding.UTF8); // Encoding.GetEncoding(1251));
+
+                TaskDialog.Show("Выполнено", $"Данные о всех ({walls.Count()}шт.) стенах проекта {doc.Title}.RVT выгружены в файл {fileName}{Environment.NewLine}.");
             }
-            catch { }
+            catch 
+            {
+                TaskDialog.Show("Прервано", "Ошибка");
+                return Result.Failed;
+            }
+
             return Result.Succeeded;
         }
     }
